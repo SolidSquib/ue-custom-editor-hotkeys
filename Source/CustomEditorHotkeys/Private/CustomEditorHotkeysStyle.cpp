@@ -43,7 +43,7 @@ TSharedRef< FSlateStyleSet > FCustomEditorHotkeysStyle::Create()
 	TSharedRef< FSlateStyleSet > Style = MakeShareable(new FSlateStyleSet("CustomEditorHotkeysStyle"));
 	Style->SetContentRoot(IPluginManager::Get().FindPlugin("CustomEditorHotkeys")->GetBaseDir() / TEXT("Resources"));
 
-	Style->Set("CustomEditorHotkeys.PluginAction", new IMAGE_BRUSH_SVG(TEXT("PlaceholderButtonIcon"), Icon20x20));
+	Style->Set("CustomEditorHotkeys.PluginAction", new IMAGE_BRUSH_SVG(TEXT("HotkeysRefresh"), Icon20x20));
 	return Style;
 }
 

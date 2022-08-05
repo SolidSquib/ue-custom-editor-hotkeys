@@ -71,8 +71,11 @@ public:
 	static void GetBlutilityClasses(TArray<FAssetData>& OutAssets, const FName& InClassName);
 	static void CreateBlutilityActionsMenu(FMenuBuilder& MenuBuilder, TArray<class UEditorUtilityObject*> Utils);
 	static TArray<UEditorUtilityObject*> GetUtilitiesSupportedBySelectedActors(const TArray<AActor*>& SelectedActors);
+	static TArray<UEditorUtilityObject*> GetUtilitiesSupportedBySelectedAssets(const TArray<UObject*>& SelectedAssets);
 	static void GetUtilityFunctions(UEditorUtilityObject* Utility, TArray<FFunctionAndUtil>& OutFunctions, bool bDoSort = false);
 	static void GetUtilityFunctions(const TArray<UEditorUtilityObject*>& Utilities, TArray<FFunctionAndUtil>& OutFunctions, bool bDoSort = false);
-	static void ExecuteUtilityFunctionByName(FName FunctionName);
+	static void ExecuteUtilityFunctionByName(FName FunctionName, const TArray<UEditorUtilityObject*>& Utilities);
+	static void ExecuteActorUtilityFunctionByName(FName FunctionName);
+	static void ExecuteAssetUtilityFunctionByName(FName FunctionName);
 	static void ExecuteUtilityFunction(const FFunctionAndUtil& FunctionAndUtil);
 };

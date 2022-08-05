@@ -9,6 +9,8 @@
 class FToolBarBuilder;
 class FMenuBuilder;
 
+DECLARE_LOG_CATEGORY_EXTERN(LogCustomEditorHotkeys, Log, All);
+
 class FCustomEditorHotkeysModule : public IModuleInterface
 {
 public:
@@ -31,4 +33,5 @@ private:
 	TSharedPtr<FUICommandList> CustomContentBrowserCommands;
 
 	FDelegateHandle ContentBrowserCommandExtenderDelegateHandle;
+	FDelegateHandle AssetRegistryInitialLoadCompleteDelegateHandle;
 };

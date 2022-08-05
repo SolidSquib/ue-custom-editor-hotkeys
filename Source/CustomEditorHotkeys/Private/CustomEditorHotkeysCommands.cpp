@@ -14,6 +14,7 @@
 #include "Editor/UnrealEdEngine.h"
 #include "Subsystems/EditorActorSubsystem.h"
 #include "UnrealEdGlobals.h"
+#include <Blutility/Public/EditorUtilityLibrary.h>
 
 #define LOCTEXT_NAMESPACE "FCustomEditorHotkeysModule"
 
@@ -44,10 +45,40 @@ void FCustomEditorHotkeysCommands::RegisterCustomCommands()
 		}
 	}
 
+	for (auto& Command : CustomLevelEditorCommands)
+	{
+		FUICommandInfo::UnregisterCommandInfo(AsShared(), Command.Value.ToSharedRef());
+	}
+	CustomLevelEditorCommands.Empty();
+
+	for (auto& Command : CustomContentBrowserCommands)
+	{
+		FUICommandInfo::UnregisterCommandInfo(AsShared(), Command.Value.ToSharedRef());
+	}
+	CustomContentBrowserCommands.Empty();
+
+	FCommandInfoMap DummyMap;
+
+	auto GetAppropriateCommandMapForUtility = [&](const UEditorUtilityObject* UtilityObject) -> FCommandInfoMap& {
+		
+		if (UtilityObject->IsA<UActorActionUtility>())
+		{
+			return CustomLevelEditorCommands;
+		}
+		else if (UtilityObject->IsA<UAssetActionUtility>())
+		{
+			return CustomContentBrowserCommands;
+		}
+
+		return DummyMap;
+	};
+
 	for (const FCustomEditorHotkeysBlutilityExtensions::FFunctionAndUtil& UtilityFunction : UtilityFunctions)
 	{
-		FName FunctionName = FName(UtilityFunction.Function->GetName());		
-		if (CustomLevelEditorCommands.Contains(FunctionName))
+		FName FunctionName = FName(UtilityFunction.Function->GetName());
+		FCommandInfoMap& CommandMap = GetAppropriateCommandMapForUtility(UtilityFunction.Util);
+
+		if (CommandMap.Contains(FunctionName))
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Duplicate custom command name found. Ignoring: \"%s\""), *FunctionName.ToString());
 			continue;
@@ -67,15 +98,7 @@ void FCustomEditorHotkeysCommands::RegisterCustomCommands()
 			EUserInterfaceActionType::Button,
 			FInputChord()
 		);
-
-		if (UtilityFunction.Util->IsA<UActorActionUtility>())
-		{
-			CustomLevelEditorCommands.Add(FunctionName, NewCommand);
-		}
-		else if (UtilityFunction.Util->IsA<UAssetActionUtility>())
-		{
-			CustomContentBrowserCommands.Add(FunctionName, NewCommand);
-		}
+		CommandMap.Add(FunctionName, NewCommand);
 	}
 
 	CommandsChanged.Broadcast(*this);
@@ -291,6 +314,42 @@ TArray<UEditorUtilityObject*> FCustomEditorHotkeysBlutilityExtensions::GetUtilit
 	return SupportedUtils;
 }
 
+TArray<UEditorUtilityObject*> FCustomEditorHotkeysBlutilityExtensions::GetUtilitiesSupportedBySelectedAssets(const TArray<UObject*>& SelectedAssets)
+{
+	TArray<UEditorUtilityObject*> SupportedUtils;
+	TArray<FAssetData> UtilAssets;
+	GetBlutilityClasses(UtilAssets, UAssetActionUtility::StaticClass()->GetFName());
+
+	if (UtilAssets.Num() > 0)
+	{
+		for (UObject* Asset : SelectedAssets)
+		{
+			for (FAssetData& UtilAsset : UtilAssets)
+			{
+				if (UEditorUtilityBlueprint* Blueprint = Cast<UEditorUtilityBlueprint>(UtilAsset.GetAsset()))
+				{
+					if (UClass* BPClass = Blueprint->GeneratedClass.Get())
+					{
+						if (UAssetActionUtility* DefaultObject = Cast<UAssetActionUtility>(
+							BPClass->GetDefaultObject()))
+						{
+							UClass* SupportedClass = DefaultObject->GetSupportedClass();
+							UClass* AssetClass = Cast<UBlueprint>(Asset)->GeneratedClass.Get();
+							if (SupportedClass == nullptr || (SupportedClass && AssetClass->IsChildOf(
+								SupportedClass)))
+							{
+								SupportedUtils.AddUnique(DefaultObject);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return SupportedUtils;
+}
+
 void FCustomEditorHotkeysBlutilityExtensions::GetUtilityFunctions(UEditorUtilityObject* Utility, TArray<FFunctionAndUtil>& OutFunctions, bool bDoSort /*= false*/)
 {
 	UClass* Class = Cast<UObject>(Utility)->GetClass();
@@ -339,7 +398,28 @@ void FCustomEditorHotkeysBlutilityExtensions::GetUtilityFunctions(const TArray<U
 	}
 }
 
-void FCustomEditorHotkeysBlutilityExtensions::ExecuteUtilityFunctionByName(FName FunctionName)
+void FCustomEditorHotkeysBlutilityExtensions::ExecuteUtilityFunctionByName(FName FunctionName, const TArray<UEditorUtilityObject*>& Utilities)
+{
+	TArray<FFunctionAndUtil> Functions;
+	GetUtilityFunctions(Utilities, Functions);
+
+	for (const FFunctionAndUtil& FunctionAndUtil : Functions)
+	{
+		if (FunctionAndUtil.Function)
+		{
+			FString CommandTitle = FunctionAndUtil.Function->GetDisplayNameText().ToString();
+			CommandTitle.RemoveSpacesInline();
+
+			if (FunctionName == FName(*CommandTitle))
+			{
+				ExecuteUtilityFunction(FunctionAndUtil);
+				return;
+			}
+		}
+	}
+}
+
+void FCustomEditorHotkeysBlutilityExtensions::ExecuteActorUtilityFunctionByName(FName FunctionName)
 {
 	if (!GUnrealEd)
 		return;
@@ -349,24 +429,16 @@ void FCustomEditorHotkeysBlutilityExtensions::ExecuteUtilityFunctionByName(FName
 		const TArray<AActor*> SelectedActors = EditorActorSubsystem->GetSelectedLevelActors();
 		const TArray<UEditorUtilityObject*> SupportedUtils = GetUtilitiesSupportedBySelectedActors(SelectedActors);
 
-		TArray<FFunctionAndUtil> Functions;
-		GetUtilityFunctions(SupportedUtils, Functions);
-
-		for (const FFunctionAndUtil& FunctionAndUtil : Functions)
-		{
-			if (FunctionAndUtil.Function)
-			{
-				FString CommandTitle = FunctionAndUtil.Function->GetDisplayNameText().ToString();
-				CommandTitle.RemoveSpacesInline();
-
-				if (FunctionName == FName(*CommandTitle))
-				{
-					ExecuteUtilityFunction(FunctionAndUtil);
-					return;
-				}
-			}
-		}
+		ExecuteUtilityFunctionByName(FunctionName, SupportedUtils);
 	}
+}
+
+void FCustomEditorHotkeysBlutilityExtensions::ExecuteAssetUtilityFunctionByName(FName FunctionName)
+{
+	const TArray<UObject*> SelectedAssets = UEditorUtilityLibrary::GetSelectedAssets();
+	const TArray<UEditorUtilityObject*> SupportedUtils = GetUtilitiesSupportedBySelectedAssets(SelectedAssets);
+	
+	ExecuteUtilityFunctionByName(FunctionName, SupportedUtils);
 }
 
 void FCustomEditorHotkeysBlutilityExtensions::ExecuteUtilityFunction(const FFunctionAndUtil& FunctionAndUtil)

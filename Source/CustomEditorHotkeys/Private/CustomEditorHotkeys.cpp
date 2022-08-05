@@ -7,8 +7,11 @@
 #include "ToolMenus.h"
 #include "LevelEditor.h"
 #include "ContentBrowserModule.h"
+#include <AssetRegistry/AssetRegistryModule.h>
 
 static const FName CustomEditorHotkeysTabName("CustomEditorHotkeys");
+
+DEFINE_LOG_CATEGORY(LogCustomEditorHotkeys);
 
 #define LOCTEXT_NAMESPACE "FCustomEditorHotkeysModule"
 
@@ -30,7 +33,13 @@ void FCustomEditorHotkeysModule::StartupModule()
 		FExecuteAction::CreateRaw(this, &FCustomEditorHotkeysModule::PluginButtonClicked),
 		FCanExecuteAction());
 
-	ResetEditorCommands();
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	IAssetRegistry& AssetRegistry = AssetRegistryModule.Get();
+	AssetRegistryInitialLoadCompleteDelegateHandle = AssetRegistry.OnFilesLoaded().AddLambda([this, &AssetRegistry] {
+
+		ResetEditorCommands();
+		AssetRegistry.OnFilesLoaded().Remove(AssetRegistryInitialLoadCompleteDelegateHandle);
+	});
 
 	UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateRaw(this, &FCustomEditorHotkeysModule::RegisterMenus));
 
@@ -77,19 +86,38 @@ void FCustomEditorHotkeysModule::PluginButtonClicked()
 
 void FCustomEditorHotkeysModule::ResetEditorCommands()
 {
-	//Unmap old actions first or we may get duplicates or out of date commands
-
-
 	if (FCustomEditorHotkeysCommands::IsRegistered())
 	{
+		// Unmap
+		for (const auto& Pair : FCustomEditorHotkeysCommands::GetCustomLevelEditorCommands())
+		{
+			if (CustomLevelEditorCommands->IsActionMapped(Pair.Value))
+			{
+				CustomLevelEditorCommands->UnmapAction(Pair.Value);				
+			}
+		}
+
+		for (const auto& Pair : FCustomEditorHotkeysCommands::GetCustomContentBrowserCommands())
+		{
+			if (CustomContentBrowserCommands->IsActionMapped(Pair.Value))
+			{
+				CustomContentBrowserCommands->UnmapAction(Pair.Value);
+			}
+		}
+
 		FCustomEditorHotkeysCommands::GetMutable().RegisterCustomCommands();
 
+		// Remap
 		for (const auto& Pair : FCustomEditorHotkeysCommands::GetCustomLevelEditorCommands())
 		{
 			if (!CustomLevelEditorCommands->IsActionMapped(Pair.Value))
 			{
 				CustomLevelEditorCommands->MapAction(Pair.Value,
-					FExecuteAction::CreateStatic(&FCustomEditorHotkeysBlutilityExtensions::ExecuteUtilityFunctionByName, Pair.Key));
+					FExecuteAction::CreateStatic(&FCustomEditorHotkeysBlutilityExtensions::ExecuteActorUtilityFunctionByName, Pair.Key));
+			}
+			else
+			{
+				UE_LOG(LogCustomEditorHotkeys, Warning, TEXT("Duplicate Custom Command mapping found: \"%s\""), *Pair.Key.ToString());
 			}
 		}
 
@@ -98,7 +126,11 @@ void FCustomEditorHotkeysModule::ResetEditorCommands()
 			if (!CustomContentBrowserCommands->IsActionMapped(Pair.Value))
 			{
 				CustomContentBrowserCommands->MapAction(Pair.Value,
-					FExecuteAction::CreateStatic(&FCustomEditorHotkeysBlutilityExtensions::ExecuteUtilityFunctionByName, Pair.Key));
+					FExecuteAction::CreateStatic(&FCustomEditorHotkeysBlutilityExtensions::ExecuteAssetUtilityFunctionByName, Pair.Key));
+			}
+			else
+			{
+				UE_LOG(LogCustomEditorHotkeys, Warning, TEXT("Duplicate Custom Command mapping found: \"%s\""), *Pair.Key.ToString());
 			}
 		}
 	}
@@ -132,6 +164,7 @@ void FCustomEditorHotkeysModule::RegisterMenus()
 void FCustomEditorHotkeysModule::OnExtendContentBrowserCommands(TSharedRef<FUICommandList> CommandList, FOnContentBrowserGetSelection GetSelectionDelegate)
 {
 	CommandList->Append(CustomContentBrowserCommands->AsShared());
+	UE_LOG(LogCustomEditorHotkeys, Log, TEXT("Custom commands appended to content browser module."));
 }
 
 #undef LOCTEXT_NAMESPACE
