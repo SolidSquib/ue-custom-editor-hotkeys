@@ -142,9 +142,9 @@ void FCustomEditorHotkeysModule::RegisterMenus()
 	FToolMenuOwnerScoped OwnerScoped(this);
 
 	{
-		UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Window");
+		UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Tools");
 		{
-			FToolMenuSection& Section = Menu->FindOrAddSection("WindowLayout");
+			FToolMenuSection& Section = Menu->FindOrAddSection("Hotkeys");
 			Section.AddMenuEntryWithCommandList(FCustomEditorHotkeysCommands::Get().PluginAction, PluginCommands);
 		}
 	}
