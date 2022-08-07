@@ -22,14 +22,13 @@ public class CustomEditorHotkeys : ModuleRules
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
-			
-		
+
+
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
 				"Projects",
 				"InputCore",
-				"EditorFramework",
 				"UnrealEd",
 				"ToolMenus",
 				"CoreUObject",
@@ -40,8 +39,9 @@ public class CustomEditorHotkeys : ModuleRules
 				"LevelEditor",
 				"ContentBrowser",
 				"EditorStyle",
-				"BlueprintGraph"
-				// ... add private dependencies that you statically link with here ...	
+				"BlueprintGraph",
+                "EditorScriptingUtilities"
+                // ... add private dependencies that you statically link with here ...
 			}
 			);
 	}

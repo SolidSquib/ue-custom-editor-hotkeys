@@ -4,7 +4,7 @@
 	"VersionName": "1.0",
 	"FriendlyName": "CustomEditorHotkeys",
 	"Description": "Bind keyboard shortcuts to your blutility-powered custom editor utilities.",
-	"Category": "Other",
+	"Category": "Editor",
 	"CreatedBy": "Michael Iorizzo",
 	"CreatedByURL": "",
 	"DocsURL": "",

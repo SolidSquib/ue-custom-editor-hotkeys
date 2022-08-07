@@ -1,14 +1,10 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "CustomEditorHotkeysStyle.h"
-#include "CustomEditorHotkeys.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Styling/SlateStyleRegistry.h"
 #include "Slate/SlateGameResources.h"
 #include "Interfaces/IPluginManager.h"
-#include "Styling/SlateStyleMacros.h"
-
-#define RootToContentDir Style->RootToContentDir
 
 TSharedPtr<FSlateStyleSet> FCustomEditorHotkeysStyle::StyleInstance = nullptr;
 
@@ -37,15 +33,20 @@ FName FCustomEditorHotkeysStyle::GetStyleSetName()
 
 const FVector2D Icon16x16(16.0f, 16.0f);
 const FVector2D Icon20x20(20.0f, 20.0f);
+const FVector2D Icon40x40(40.0f, 40.0f);
+
+#define IMAGE_BRUSH( RelativePath, ... ) FSlateImageBrush( Style->RootToContentDir( RelativePath, TEXT(".png") ), __VA_ARGS__ )
 
 TSharedRef< FSlateStyleSet > FCustomEditorHotkeysStyle::Create()
 {
 	TSharedRef< FSlateStyleSet > Style = MakeShareable(new FSlateStyleSet("CustomEditorHotkeysStyle"));
 	Style->SetContentRoot(IPluginManager::Get().FindPlugin("CustomEditorHotkeys")->GetBaseDir() / TEXT("Resources"));
 
-	Style->Set("CustomEditorHotkeys.PluginAction", new IMAGE_BRUSH_SVG(TEXT("HotkeysRefresh"), Icon20x20));
+	Style->Set("CustomEditorHotkeys.PluginAction", new IMAGE_BRUSH(TEXT("HotkeysRefresh"), Icon40x40));
 	return Style;
 }
+
+#undef IMAGE_BRUSH
 
 void FCustomEditorHotkeysStyle::ReloadTextures()
 {

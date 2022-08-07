@@ -12,15 +12,15 @@
 #include "EditorUtilityObject.h"
 
 #include "Editor/UnrealEdEngine.h"
-#include "Subsystems/EditorActorSubsystem.h"
 #include "UnrealEdGlobals.h"
-#include <Blutility/Public/EditorUtilityLibrary.h>
+#include "Blutility/Public/EditorUtilityLibrary.h"
+#include "EditorLevelLibrary.h"
 
 #define LOCTEXT_NAMESPACE "FCustomEditorHotkeysModule"
 
 void FCustomEditorHotkeysCommands::RegisterCommands()
 {
-	UI_COMMAND(PluginAction, "Refresh Custom Editor Hotkeys", "Refresh mapped hotkeys, adding new commands to the editor preferences and removing outdated ones.", EUserInterfaceActionType::Button, FInputChord());
+	UI_COMMAND(PluginAction, "Refresh Hotkeys", "Refresh mapped hotkeys, adding new commands to the editor preferences and removing outdated ones.", EUserInterfaceActionType::Button, FInputChord());
 }
 
 void FCustomEditorHotkeysCommands::RegisterCustomCommands()
@@ -421,16 +421,10 @@ void FCustomEditorHotkeysBlutilityExtensions::ExecuteUtilityFunctionByName(FName
 
 void FCustomEditorHotkeysBlutilityExtensions::ExecuteActorUtilityFunctionByName(FName FunctionName)
 {
-	if (!GUnrealEd)
-		return;
+	const TArray<AActor*> SelectedActors = UEditorLevelLibrary::GetSelectedLevelActors();
+	const TArray<UEditorUtilityObject*> SupportedUtils = GetUtilitiesSupportedBySelectedActors(SelectedActors);
 
-	if (UEditorActorSubsystem* EditorActorSubsystem = GUnrealEd->GetEditorSubsystem<UEditorActorSubsystem>())
-	{
-		const TArray<AActor*> SelectedActors = EditorActorSubsystem->GetSelectedLevelActors();
-		const TArray<UEditorUtilityObject*> SupportedUtils = GetUtilitiesSupportedBySelectedActors(SelectedActors);
-
-		ExecuteUtilityFunctionByName(FunctionName, SupportedUtils);
-	}
+	ExecuteUtilityFunctionByName(FunctionName, SupportedUtils);
 }
 
 void FCustomEditorHotkeysBlutilityExtensions::ExecuteAssetUtilityFunctionByName(FName FunctionName)
